@@ -239,15 +239,22 @@ function rowHTML(e, showDelete, showTime) {
 }
 
 function renderSummary() {
-  const total = state.expenses.reduce((s, e) => s + e.amount, 0);
+  /* Only current calendar month counts toward "This month" */
+  const now = new Date();
+  const monthExp = state.expenses.filter(e => {
+    const d = new Date(e.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const total = monthExp.reduce((s, e) => s + e.amount, 0);
   const byCat = state.categories
-    .map(c => ({ c: c, sum: state.expenses.filter(e => e.categoryId === c.id).reduce((s, e) => s + e.amount, 0) }))
+    .map(c => ({ c: c, sum: monthExp.filter(e => e.categoryId === c.id).reduce((s, e) => s + e.amount, 0) }))
     .filter(x => x.sum > 0).sort((a, b) => b.sum - a.sum);
   const max = Math.max(1, ...byCat.map(x => x.sum));
+  const monthName = now.toLocaleDateString(undefined, { month: "long" });
   document.getElementById("tab-summary").innerHTML =
-    '<div class="hero"><div class="lbl">This month</div>'
+    '<div class="hero"><div class="lbl">' + esc(monthName) + " \u00b7 This month</div>"
     + '<div class="total">' + money(total) + '</div>'
-    + '<small>' + state.expenses.length + ' transactions</small>'
+    + '<small>' + monthExp.length + ' transactions this month</small>'
     + '<div class="hero-actions">'
     + '<button id="export-report">📄 Export report</button>'
     + '<button id="export-csv">⬇ Export CSV</button></div></div>'
@@ -264,8 +271,8 @@ function renderSummary() {
     + '<div class="card"><h2>Recent</h2>'
     + (state.expenses.slice(0, 5).map(e => rowHTML(e, false, false)).join("") || '<div class="empty">Nothing yet.</div>')
     + '</div>';
-  document.getElementById("export-report").addEventListener("click", exportReport);
-  document.getElementById("export-csv").addEventListener("click", exportCSV);
+  document.getElementById("export-report").addEventListener("click", () => exportDialog("pdf"));
+  document.getElementById("export-csv").addEventListener("click", () => exportDialog("csv"));
 }
 
 const historyState = { q: "", filter: null };
@@ -496,7 +503,23 @@ function pickReceipt(ev) {
   const f = ev.target.files[0];
   if (!f) return;
   const meta = { name: f.name, type: f.type.indexOf("pdf") >= 0 ? "pdf" : "image", data: null };
-  if (f.size < 1.5 * 1024 * 1024) {
+  if (f.type.indexOf("image/") === 0) {
+    /* Downscale to max 1200px JPEG so iPhone/HEIC photos store reliably */
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, 1200 / img.width);
+      const cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(img.width * scale));
+      cv.height = Math.max(1, Math.round(img.height * scale));
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      try { meta.data = cv.toDataURL("image/jpeg", 0.8); } catch (err) {}
+      receipt = meta; drawSheet();
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); receipt = meta; drawSheet(); };
+    img.src = url;
+  } else if (f.size < 4 * 1024 * 1024) {
     const rd = new FileReader();
     rd.onload = () => { meta.data = rd.result; receipt = meta; drawSheet(); };
     rd.readAsDataURL(f);
@@ -531,14 +554,50 @@ function saveExpense() {
 }
 
 /* ---------- export ---------- */
-function exportReport() {
+function exportDialog(kind) {
+  const now = new Date();
+  const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const toDay = ts => toLocalInput(new Date(ts)).slice(0, 10);
+  document.getElementById("dialog").innerHTML =
+    "<h3>" + (kind === "pdf" ? "Export report" : "Export CSV") + "</h3>"
+    + "<p style='margin-bottom:10px'>Choose a date range:</p>"
+    + '<div style="display:flex;gap:8px;margin-bottom:12px">'
+    + '<input class="field" style="margin:0" type="date" id="from" value="' + toDay(mStart) + '">'
+    + '<input class="field" style="margin:0" type="date" id="to" value="' + toDay(now) + '"></div>'
+    + '<div class="two"><button class="btn-ghost" id="rng-month">This month</button>'
+    + '<button class="btn-ghost" id="rng-all">All time</button></div>'
+    + '<div class="two"><button class="btn-ghost" id="rng-cancel">Cancel</button>'
+    + '<button class="btn-grad" id="rng-go">Export</button></div>';
+  document.getElementById("dialog-bg").classList.add("on");
+  document.getElementById("rng-month").addEventListener("click", () => {
+    document.getElementById("from").value = toDay(mStart);
+    document.getElementById("to").value = toDay(now);
+  });
+  document.getElementById("rng-all").addEventListener("click", () => {
+    const oldest = state.expenses.length ? state.expenses[state.expenses.length - 1].date : now.getTime();
+    document.getElementById("from").value = toDay(oldest);
+    document.getElementById("to").value = toDay(now);
+  });
+  document.getElementById("rng-cancel").addEventListener("click", closeDialog);
+  document.getElementById("rng-go").addEventListener("click", () => {
+    const from = new Date(document.getElementById("from").value + "T00:00:00");
+    const to = new Date(document.getElementById("to").value + "T23:59:59");
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return;
+    const list = state.expenses.filter(e => e.date >= from.getTime() && e.date <= to.getTime());
+    closeDialog();
+    if (!list.length) { alert("No transactions in that range."); return; }
+    if (kind === "pdf") exportReport(list, from, to); else exportCSV(list);
+  });
+}
+
+function exportReport(list, from, to) {
   const w = window.open("", "_blank");
   if (!w) { alert("Allow pop-ups for this site to export the report."); return; }
-  const total = state.expenses.reduce((s, e) => s + e.amount, 0);
+  const total = list.reduce((s, e) => s + e.amount, 0);
   const byCat = state.categories
-    .map(c => ({ c: c, sum: state.expenses.filter(e => e.categoryId === c.id).reduce((s, e) => s + e.amount, 0) }))
+    .map(c => ({ c: c, sum: list.filter(e => e.categoryId === c.id).reduce((s, e) => s + e.amount, 0) }))
     .filter(x => x.sum > 0).sort((a, b) => b.sum - a.sum);
-  const rows = state.expenses.map(e => {
+  const rows = list.map(e => {
     const c = cat(e.categoryId);
     let rec = "—";
     if (e.receipt) {
@@ -562,16 +621,19 @@ function exportReport() {
     + "@media print{.btn{display:none}}"
     + "</style></head><body>"
     + "<button class='btn' onclick='print()'>Print / Save as PDF</button>"
-    + "<h1>Expense Report</h1><p style='font-size:12px;color:#6b7280'>Generated " + fmtLocalStamp(Date.now()) + " · " + state.expenses.length + " entries · Total: <b>" + money(total) + "</b></p>"
+    + "<h1>Expense Report</h1><p style='font-size:12px;color:#6b7280'>"
+    + "<b>" + from.toLocaleDateString() + " \u2013 " + to.toLocaleDateString() + "</b> · "
+    + list.length + " entries · Total: <b>" + money(total) + "</b><br>"
+    + "Generated " + fmtLocalStamp(Date.now()) + "</p>"
     + "<p style='font-size:12px'>" + byCat.map(x => esc(x.c.name) + ": <b>" + money(x.sum) + "</b>").join(" · ") + "</p>"
     + "<table><tr><th>Date &amp; time</th><th>Category</th><th>Note</th><th>Amount</th><th>Receipt</th></tr>" + rows + "</table>"
     + "<footer>Expense Tracker — data from this device. Times shown in your local timezone.</footer></body></html>");
   w.document.close();
 }
 
-function exportCSV() {
+function exportCSV(list) {
   const rows = [["date", "amount", "category", "note", "receipt"]];
-  state.expenses.forEach(e => rows.push([
+  list.forEach(e => rows.push([
     fmtLocalStamp(e.date),
     (e.amount / 100).toFixed(2),
     cat(e.categoryId).name,
