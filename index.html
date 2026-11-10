@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#059669" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<title>Expense Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    background: #f3f4f6; color: #111827;
+    --emerald: #059669; --emerald-light: #34d399;
+  }
+  body { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; padding-bottom: 64px; }
+  button { font: inherit; cursor: pointer; border: none; background: none; }
+
+  /* Nav */
+  nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px;
+    display: flex; background: #fff; border-top: 1px solid #e5e7eb; z-index: 10;
+    padding-bottom: env(safe-area-inset-bottom); }
+  nav button { flex: 1; padding: 8px 0 6px; font-size: 11px; font-weight: 500; color: #9ca3af; line-height: 1.3; }
+  nav button.on { color: var(--emerald); }
+
+  section { display: none; padding: 16px; }
+  section.on { display: block; }
+
+  .card { background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+  h2 { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 10px; }
+  .total-label { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: #6b7280; }
+  .total { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12px; }
+  .bar-row .lbl { width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; height: 16px; border-radius: 0 8px 8px 0; background: #f3f4f6; }
+  .bar-fill { height: 100%; border-radius: 0 8px 8px 0; }
+
+  .row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f3f4f6; }
+  .row:last-child { border-bottom: none; }
+  .row .badge { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .row .meta { flex: 1; min-width: 0; }
+  .row .meta b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .meta small { font-size: 11px; color: #9ca3af; }
+  .row .amt { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .del { color: #d1d5db; padding: 4px; font-size: 14px; }
+  .del:active { color: #ef4444; }
+  .clip { color: #0ea5e9; font-size: 13px; padding: 4px; }
+
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex-shrink: 0; padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; background: #f3f4f6; color: #4b5563; }
+  .chip.on { color: #fff; }
+  .search { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 14px; margin-bottom: 10px; outline: none; }
+  .search:focus { border-color: var(--emerald); }
+
+  /* FAB */
+  #fab { position: fixed; right: max(16px, calc(50vw - 224px)); bottom: 80px; width: 56px; height: 56px;
+    border-radius: 50%; background: var(--emerald); color: #fff; font-size: 30px; line-height: 1;
+    box-shadow: 0 6px 16px rgb(5 150 105 / .4); z-index: 11; }
+  #fab:active { transform: scale(.94); }
+
+  /* Sheet */
+  #overlay { position: fixed; inset: 0; background: rgb(0 0 0 / .5); z-index: 20; display: none; }
+  #overlay.on { display: flex; align-items: flex-end; justify-content: center; }
+  #sheet { width: 100%; max-width: 480px; background: #fff; border-radius: 24px 24px 0 0; padding: 12px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; }
+  .sheet-eyebrow { text-align: center; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: #9ca3af; }
+  #amt-display { text-align: center; font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 4px 0 12px; }
+  #amt-display .cents { color: #9ca3af; }
+  .wrap-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px; }
+  .field { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 14px; margin-bottom: 10px; outline: none; }
+  .field:focus { border-color: var(--emerald); }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+  .keypad button { background: #f3f4f6; border-radius: 12px; padding: 12px 0; font-size: 18px; font-weight: 600; color: #1f2937; }
+  .keypad button:active { background: #e5e7eb; }
+  .btn-save { width: 100%; margin-top: 12px; background: var(--emerald); color: #fff; font-weight: 600;
+    font-size: 14px; padding: 13px; border-radius: 12px; }
+  .btn-save:disabled { opacity: .4; }
+  .btn-cancel { width: 100%; padding: 10px; font-size: 12px; color: #9ca3af; }
+  .attach { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+  .attach button { border: 1.5px dashed #d1d5db; border-radius: 12px; padding: 9px 0; font-size: 12px; font-weight: 500; color: #6b7280; background: #fff; }
+  .receipt-pill { display: flex; align-items: center; gap: 8px; background: #ecfdf5; color: #065f46;
+    border-radius: 12px; padding: 8px 12px; font-size: 12px; margin-bottom: 4px; }
+  .receipt-pill span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Settings */
+  .cat-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f3f4f6; }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-row .grow { flex: 1; font-size: 14px; font-weight: 500; }
+  .link { font-size: 12px; font-weight: 600; color: #9ca3af; padding: 4px 6px; }
+  .link:active { color: var(--emerald); }
+  .head-row { display: flex; align-items: center; justify-content: space-between; }
+  .btn-add { background: var(--emerald); color: #fff; border-radius: 999px; padding: 7px 14px; font-size: 12px; font-weight: 600; }
+  .warn { background: #fffbeb; color: #b45309; font-size: 12px; padding: 8px 12px; border-radius: 10px; margin: 8px 0; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 4px; }
+  .swatches button { width: 30px; height: 30px; border-radius: 50%; border: 3px solid transparent; }
+  .swatches button.on { border-color: #1f2937; }
+  .muted { font-size: 11px; color: #9ca3af; text-align: center; margin-top: 16px; }
+  .empty { text-align: center; color: #9ca3af; font-size: 13px; padding: 28px 0; }
+
+  /* Dialog */
+  .dialog-bg { position: fixed; inset: 0; background: rgb(0 0 0 / .55); z-index: 30; display: none;
+    align-items: center; justify-content: center; padding: 24px; }
+  .dialog-bg.on { display: flex; }
+  .dialog { width: 100%; max-width: 300px; background: #fff; border-radius: 18px; padding: 18px; }
+  .dialog h3 { font-size: 15px; margin-bottom: 12px; }
+  .dialog .two { display: flex; gap: 8px; margin-top: 12px; }
+  .dialog .two button { flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+  #receipt-view img { width: 100%; border-radius: 10px; max-height: 50vh; object-fit: contain; background: #f3f4f6; }
+</style>
+</head>
+<body>
+
+<nav>
+  <button data-tab="summary" class="on">📊<br>Summary</button>
+  <button data-tab="history">🧾<br>History</button>
+  <button data-tab="settings">⚙️<br>Settings</button>
+</nav>
+
+<section id="tab-summary" class="on"></section>
+<section id="tab-history"></section>
+<section id="tab-settings"></section>
+
+<button id="fab">+</button>
+
+<div id="overlay">
+  <div id="sheet"></div>
+</div>
+
+<div class="dialog-bg" id="dialog-bg"><div class="dialog" id="dialog"></div></div>
+
+<script>
+"use strict";
+/* ---------- state & storage ---------- */
+const KEY = "expense-tracker-v1";
+const DEFAULT_CATS = [
+  { id: "food", name: "Food", emoji: "🍔", color: "#f97316" },
+  { id: "transport", name: "Transport", emoji: "🚗", color: "#0ea5e9" },
+  { id: "housing", name: "Housing", emoji: "🏠", color: "#8b5cf6" },
+  { id: "bills", name: "Bills", emoji: "🧾", color: "#ef4444" },
+  { id: "health", name: "Health", emoji: "💊", color: "#10b981" },
+  { id: "shopping", name: "Shopping", emoji: "🛍️", color: "#ec4899" },
+  { id: "fun", name: "Fun", emoji: "🎬", color: "#eab308" },
+  { id: "other", name: "Other", emoji: "📦", color: "#64748b" },
+];
+const PALETTE = ["#f97316","#0ea5e9","#8b5cf6","#ef4444","#10b981","#ec4899","#eab308","#64748b"];
+
+let state = load();
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.expenses) && Array.isArray(s.categories)) return s;
+  } catch (e) {}
+  return { categories: DEFAULT_CATS.map(c => Object.assign({}, c)), expenses: [], nextId: 1 };
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch (e) { alert("Storage full — receipt images may be too large."); }
+}
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const money = c => "$" + (c / 100).toFixed(2);
+const cat = id => state.categories.find(c => c.id === id) || { name: "?", emoji: "❓", color: "#9ca3af" };
+const fmtDate = ts => { const d = new Date(ts), now = new Date();
+  if (d.toDateString() === now.toDateString()) return "Today";
+  const y = new Date(now); y.setDate(y.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return "Yesterday";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+
+/* ---------- tabs ---------- */
+let tab = "summary";
+document.querySelectorAll("nav button").forEach(b =>
+  b.addEventListener("click", () => {
+    tab = b.dataset.tab;
+    document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+    render();
+  }));
+
+/* ---------- render ---------- */
+function render() {
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === "tab-" + tab));
+  document.getElementById("fab").style.display = tab === "settings" ? "none" : "block";
+  if (tab === "summary") renderSummary();
+  if (tab === "history") renderHistory();
+  if (tab === "settings") renderSettings();
+}
+
+function rowHTML(e, showDelete) {
+  const c = cat(e.categoryId);
+  return '<div class="row" data-edit="' + e.id + '" title="Tap to edit">'
+    + '<div class="badge" style="background:' + c.color + '22">' + c.emoji + '</div>'
+    + '<div class="meta"><b>' + (esc(e.note) || esc(c.name))
+    + (e.receipt ? ' <button class="clip" data-view="' + e.id + '" title="' + esc(e.receipt.name) + '">📎</button>' : "")
+    + '</b><small>' + fmtDate(e.date) + " · " + esc(c.name) + '</small></div>'
+    + '<span class="amt">' + money(e.amount) + '</span>'
+    + (showDelete ? '<button class="del" data-del="' + e.id + '">🗑</button>' : "")
+    + '</div>';
+}
+
+function renderSummary() {
+  const total = state.expenses.reduce((s, e) => s + e.amount, 0);
+  const byCat = state.categories
+    .map(c => ({ c: c, sum: state.expenses.filter(e => e.categoryId === c.id).reduce((s, e) => s + e.amount, 0) }))
+    .filter(x => x.sum > 0).sort((a, b) => b.sum - a.sum);
+  const max = Math.max(1, ...byCat.map(x => x.sum));
+  document.getElementById("tab-summary").innerHTML =
+    '<div class="card" style="background:linear-gradient(135deg,#059669,#34d399);color:#fff;margin-bottom:14px">'
+    + '<div class="total-label" style="color:#d1fae5">This month</div>'
+    + '<div class="total">' + money(total) + '</div>'
+    + '<small style="color:#d1fae5">' + state.expenses.length + ' transactions</small></div>'
+    + '<div class="card" style="margin-bottom:14px"><h2>Spending by category</h2>'
+    + (byCat.length ? byCat.map(x =>
+        '<div class="bar-row"><span class="lbl">' + x.c.emoji + " " + esc(x.c.name) + '</span>'
+        + '<span class="bar-track"><span class="bar-fill" style="width:' + Math.round(x.sum / max * 100) + "%;background:" + x.c.color + '"></span></span>'
+        + "<b>" + money(x.sum) + "</b></div>").join("")
+      : '<div class="empty">No spending yet — tap + to add one.</div>')
+    + '</div>'
+    + '<div class="card"><h2>Recent</h2>'
+    + (state.expenses.slice(0, 5).map(e => rowHTML(e, false)).join("") || '<div class="empty">Nothing yet.</div>')
+    + '</div>';
+}
+
+const historyState = { q: "", filter: null };
+
+function renderHistory() {
+  const q = (historyState.q || "").toLowerCase(), f = historyState.filter;
+  const shown = state.expenses.filter(e =>
+    (f === null || e.categoryId === f) &&
+    (!q || (e.note || "").toLowerCase().includes(q) || cat(e.categoryId).name.toLowerCase().includes(q)));
+  document.getElementById("tab-history").innerHTML =
+    '<input class="search" id="search" placeholder="Search…" value="' + esc(historyState.q) + '">'
+    + '<div class="chips"><button class="chip ' + (f === null ? "on" : "") + '" style="' + (f === null ? "background:#1f2937" : "") + '" data-f="">All</button>'
+    + state.categories.map(c =>
+        '<button class="chip ' + (f === c.id ? "on" : "") + '" style="' + (f === c.id ? "background:" + c.color : "") + '" data-f="' + c.id + '">'
+        + c.emoji + " " + esc(c.name) + "</button>").join("")
+    + "</div>"
+    + '<div class="card">'
+    + (shown.map(e => rowHTML(e, true)).join("") || '<div class="empty">No transactions found.</div>')
+    + "</div>";
+  const s = document.getElementById("search");
+  s.addEventListener("input", () => {
+    historyState.q = s.value;
+    renderHistory();
+    const s2 = document.getElementById("search");
+    s2.focus(); s2.setSelectionRange(s2.value.length, s2.value.length);
+  });
+  document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
+    historyState.filter = b.dataset.f || null; renderHistory();
+  }));
+  bindRows();
+}
+
+function renderSettings() {
+  document.getElementById("tab-settings").innerHTML =
+    '<div class="head-row"><h2 style="margin:0">Categories</h2><button class="btn-add" id="add-cat">+ Add</button></div>'
+    + '<div id="cat-warn"></div><div class="card">'
+    + state.categories.map(c => {
+        const inUse = state.expenses.some(e => e.categoryId === c.id);
+        return '<div class="cat-row"><div class="badge" style="width:34px;height:34px;font-size:15px;background:' + c.color + '22">' + c.emoji + '</div>'
+          + '<span class="grow">' + esc(c.name) + "</span>"
+          + '<button class="link" data-edit="' + c.id + '">Edit</button>'
+          + '<button class="del" data-dcat="' + c.id + '" title="' + (inUse ? "In use" : "Delete") + '">🗑</button></div>';
+      }).join("")
+    + "</div>"
+    + '<div style="margin-top:14px"><button class="btn-add" id="export-report" style="width:100%;padding:12px">📄 Export report (with receipts)</button></div>'
+    + '<div style="margin-top:8px"><button id="export-csv" style="width:100%;border:1.5px solid #d1d5db;border-radius:12px;padding:10px 0;font-size:12px;font-weight:600;color:#6b7280;background:#fff">⬇ Export CSV</button></div>'
+    + '<p class="muted">All data lives on this device only.<br>Later versions: budgets, recurring expenses.</p>';
+  document.getElementById("export-report").addEventListener("click", exportReport);
+  document.getElementById("export-csv").addEventListener("click", exportCSV);
+  document.getElementById("add-cat").addEventListener("click", () => catDialog(null));
+  document.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => catDialog(cat(b.dataset.edit))));
+  document.querySelectorAll("[data-dcat]").forEach(b => b.addEventListener("click", () => {
+    const c = cat(b.dataset.dcat);
+    if (state.expenses.some(e => e.categoryId === c.id)) {
+      document.getElementById("cat-warn").innerHTML = '<div class="warn">"' + esc(c.name) + '" has expenses attached and can\'t be deleted.</div>';
+      return;
+    }
+    confirmDialog('Delete category "' + esc(c.name) + '"?', () => {
+      state.categories = state.categories.filter(x => x.id !== c.id); save(); render();
+    });
+  }));
+}
+
+function bindRows() {
+  document.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", ev => {
+    ev.stopPropagation();
+    const id = Number(b.dataset.del);
+    const e = state.expenses.find(x => x.id === id);
+    confirmDialog('Delete "' + (e ? (e.note || cat(e.categoryId).name) : "this expense") + '"? This can\'t be undone.', () => {
+      state.expenses = state.expenses.filter(x => x.id !== id); save(); render();
+    });
+  }));
+  document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", ev => {
+    ev.stopPropagation();
+    viewReceipt(Number(b.dataset.view));
+  }));
+  document.querySelectorAll(".row[data-edit]").forEach(r => r.addEventListener("click", () => {
+    openSheet(state.expenses.find(x => x.id === Number(r.dataset.edit)));
+  }));
+}
+
+/* ---------- confirm dialog ---------- */
+function confirmDialog(message, onYes) {
+  document.getElementById("dialog").innerHTML =
+    "<h3>Are you sure?</h3><p style='font-size:13px;color:#6b7280'>" + message + "</p>"
+    + '<div class="two"><button style="background:#f3f4f6;color:#374151" id="cf-no">Cancel</button>'
+    + '<button style="background:#dc2626;color:#fff" id="cf-yes">Delete</button></div>';
+  document.getElementById("dialog-bg").classList.add("on");
+  document.getElementById("cf-no").addEventListener("click", closeDialog);
+  document.getElementById("cf-yes").addEventListener("click", () => { closeDialog(); onYes(); });
+}
+
+/* ---------- receipt viewer ---------- */
+function viewReceipt(id) {
+  const e = state.expenses.find(x => x.id === id);
+  if (!e || !e.receipt) return;
+  document.getElementById("dialog").innerHTML =
+    '<div id="receipt-view"><h3>' + esc(e.receipt.name) + "</h3>"
+    + (e.receipt.data
+        ? (e.receipt.type === "pdf"
+            ? '<embed src="' + e.receipt.data + '" type="application/pdf" style="width:100%;height:55vh">'
+            : '<img src="' + e.receipt.data + '" alt="receipt">')
+        : '<div class="empty">' + (e.receipt.type === "pdf" ? "📄 PDF receipt attached (too large to preview)." : "Receipt attached (too large to preview).") + "</div>")
+    + '<div class="two"><button style="background:#f3f4f6;color:#374151" id="d-close">Close</button></div></div>';
+  document.getElementById("dialog-bg").classList.add("on");
+  document.getElementById("d-close").addEventListener("click", closeDialog);
+}
+function closeDialog() { document.getElementById("dialog-bg").classList.remove("on"); }
+document.getElementById("dialog-bg").addEventListener("click", e => { if (e.target.id === "dialog-bg") closeDialog(); });
+
+/* ---------- category dialog ---------- */
+function catDialog(c) {
+  const startHex = c ? c.color : PALETTE[0];
+  document.getElementById("dialog").innerHTML =
+    '<div id="cat-editor"><h3>' + (c ? "Edit category" : "New category") + "</h3>"
+    + '<div style="display:flex;gap:8px;margin-bottom:10px">'
+    + '<input class="field" id="c-emoji" style="width:64px;text-align:center;font-size:18px" maxlength="2" placeholder="🙂" value="' + (c ? esc(c.emoji) : "") + '">'
+    + '<input class="field" id="c-name" placeholder="Category name" value="' + (c ? esc(c.name) : "") + '"></div>'
+    + '<div class="swatches">' + PALETTE.map(h =>
+        '<button data-hex="' + h + '" class="' + (startHex === h ? "on" : "") + '" style="background:' + h + '"></button>').join("") + "</div>"
+    + '<div class="two"><button style="background:#f3f4f6;color:#374151" id="c-cancel">Cancel</button>'
+    + '<button style="background:var(--emerald);color:#fff" id="c-save">Save</button></div>'
+    + (c ? '<div class="two"><button style="flex:1;background:#fef2f2;color:#dc2626" id="c-delete">Delete category</button></div>' : "")
+    + "</div>";
+  document.getElementById("dialog-bg").classList.add("on");
+  let hex = startHex;
+  document.querySelectorAll("[data-hex]").forEach(b => b.addEventListener("click", () => {
+    hex = b.dataset.hex;
+    document.querySelectorAll("[data-hex]").forEach(x => x.classList.toggle("on", x === b));
+  }));
+  document.getElementById("c-cancel").addEventListener("click", closeDialog);
+  document.getElementById("c-save").addEventListener("click", () => {
+    const name = document.getElementById("c-name").value.trim();
+    const emoji = document.getElementById("c-emoji").value.trim() || "🏷️";
+    if (!name) return;
+    if (c) Object.assign(c, { name: name, emoji: emoji, color: hex });
+    else state.categories.push({ id: "c" + Date.now(), name: name, emoji: emoji, color: hex });
+    save(); closeDialog(); render();
+  });
+  const delBtn = document.getElementById("c-delete");
+  if (delBtn) delBtn.addEventListener("click", () => {
+    if (state.expenses.some(e => e.categoryId === c.id)) {
+      alert('"' + c.name + '" has expenses attached and can\'t be deleted.');
+      return;
+    }
+    confirmDialog('Delete category "' + esc(c.name) + '"?', () => {
+      state.categories = state.categories.filter(x => x.id !== c.id);
+      save(); closeDialog(); render();
+    });
+  });
+}
+
+/* ---------- add expense sheet ---------- */
+const sheet = document.getElementById("sheet"), overlay = document.getElementById("overlay");
+let amt = "", pickCat = null, receipt = null;
+
+document.getElementById("fab").addEventListener("click", openSheet);
+overlay.addEventListener("click", e => { if (e.target === overlay) closeSheet(); });
+
+let editId = null;
+function openSheet(existing) {
+  editId = existing ? existing.id : null;
+  amt = existing ? (existing.amount / 100).toFixed(2).replace(/\.?0+$/, "") : "";
+  pickCat = existing ? existing.categoryId : (state.categories[0] ? state.categories[0].id : null);
+  receipt = existing ? existing.receipt : null;
+  sheet.innerHTML =
+    '<p class="sheet-eyebrow">' + (editId ? "Edit expense" : "New expense") + '</p><p id="amt-display"></p>'
+    + '<div class="wrap-chips" id="sheet-chips"></div>'
+    + '<input class="field" id="note" placeholder="Note (optional)" value="' + (existing ? esc(existing.note) : "") + '">'
+    + '<div class="attach"><button id="take-photo">📷 Take / choose photo</button><button id="attach-file">📎 Attach file</button></div>'
+    + '<div id="receipt-slot"></div>'
+    + '<input type="file" id="photo-input" accept="image/*" hidden>'
+    + '<input type="file" id="file-input" accept="image/*,application/pdf" hidden>'
+    + '<div class="keypad" id="keypad">'
+    + ["1","2","3","4","5","6","7","8","9",".","0","⌫"].map(k => '<button data-k="' + k + '">' + k + "</button>").join("")
+    + "</div>"
+    + '<button class="btn-save" id="save-exp">' + (editId ? "Save changes" : "Save expense") + "</button>"
+    + '<button class="btn-cancel" id="cancel">Cancel</button>';
+  document.querySelectorAll("#keypad button").forEach(b => b.addEventListener("click", () => pressKey(b.dataset.k)));
+  document.getElementById("take-photo").addEventListener("click", () => document.getElementById("photo-input").click());
+  document.getElementById("attach-file").addEventListener("click", () => document.getElementById("file-input").click());
+  document.getElementById("photo-input").addEventListener("change", e => pickReceipt(e));
+  document.getElementById("file-input").addEventListener("change", e => pickReceipt(e));
+  document.getElementById("save-exp").addEventListener("click", saveExpense);
+  document.getElementById("cancel").addEventListener("click", closeSheet);
+  drawSheet();
+  overlay.classList.add("on");
+}
+function closeSheet() { overlay.classList.remove("on"); }
+
+function drawSheet() {
+  document.getElementById("amt-display").innerHTML = "$" + (amt || "0") + '<span class="cents">' + (amt.indexOf(".") >= 0 ? "" : ".00") + "</span>";
+  document.getElementById("sheet-chips").innerHTML = state.categories.map(c =>
+    '<button class="chip ' + (pickCat === c.id ? "on" : "") + '" style="' + (pickCat === c.id ? "background:" + c.color : "") + '" data-pc="' + c.id + '">'
+    + c.emoji + " " + esc(c.name) + "</button>").join("");
+  document.querySelectorAll("[data-pc]").forEach(b => b.addEventListener("click", () => { pickCat = b.dataset.pc; drawSheet(); }));
+  const slot = document.getElementById("receipt-slot");
+  slot.innerHTML = receipt
+    ? '<div class="receipt-pill"><span>📎 ' + esc(receipt.name) + '</span><button style="font-weight:600" id="rm-r">Remove</button></div>' : "";
+  if (receipt) document.getElementById("rm-r").addEventListener("click", () => { receipt = null; drawSheet(); });
+  document.getElementById("save-exp").disabled = !(parseFloat(amt) > 0);
+}
+
+function pressKey(k) {
+  if (k === "⌫") amt = amt.slice(0, -1);
+  else if (k === ".") { if (amt.indexOf(".") < 0) amt = (amt || "0") + "."; }
+  else if (amt.replace(".", "").length < 7 && (amt.indexOf(".") < 0 || amt.split(".")[1].length < 2)) amt += k;
+  drawSheet();
+}
+
+function pickReceipt(ev) {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const meta = { name: f.name, type: f.type.indexOf("pdf") >= 0 ? "pdf" : "image", data: null };
+  if (f.size < 1.5 * 1024 * 1024) {
+    const rd = new FileReader();
+    rd.onload = () => { meta.data = rd.result; receipt = meta; drawSheet(); };
+    rd.readAsDataURL(f);
+  } else { receipt = meta; drawSheet(); }
+}
+
+function saveExpense() {
+  const cents = Math.round(parseFloat(amt || "0") * 100);
+  if (!(cents > 0)) return;
+  const note = document.getElementById("note").value.trim();
+  if (editId) {
+    const e = state.expenses.find(x => x.id === editId);
+    if (e) Object.assign(e, { amount: cents, categoryId: pickCat, note: note, receipt: receipt });
+    save(); closeSheet(); render();
+    return;
+  }
+  state.expenses.unshift({
+    id: state.nextId++,
+    amount: cents,
+    categoryId: pickCat,
+    note: note,
+    date: Date.now(),
+    receipt: receipt,
+  });
+  state.expenses.sort((a, b) => b.date - a.date);
+  save(); closeSheet();
+  tab = "summary";
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x.dataset.tab === "summary"));
+  render();
+}
+
+/* ---------- export ---------- */
+function exportReport() {
+  const w = window.open("", "_blank");
+  if (!w) { alert("Allow pop-ups for this site to export the report."); return; }
+  const total = state.expenses.reduce((s, e) => s + e.amount, 0);
+  const byCat = state.categories
+    .map(c => ({ c: c, sum: state.expenses.filter(e => e.categoryId === c.id).reduce((s, e) => s + e.amount, 0) }))
+    .filter(x => x.sum > 0).sort((a, b) => b.sum - a.sum);
+  const rows = state.expenses.map(e => {
+    const c = cat(e.categoryId);
+    let rec = "—";
+    if (e.receipt) {
+      if (e.receipt.type === "pdf") rec = e.receipt.data
+        ? '<embed src="' + e.receipt.data + '" type="application/pdf" style="width:200px;height:260px">'
+        : "<em>" + esc(e.receipt.name) + " (PDF, not stored)</em>";
+      else rec = e.receipt.data
+        ? '<img src="' + e.receipt.data + '" style="max-width:200px;border:1px solid #e5e7eb;border-radius:8px">'
+        : "<em>" + esc(e.receipt.name) + " (image, not stored)</em>";
+    }
+    return "<tr><td>" + new Date(e.date).toLocaleDateString() + "</td><td>" + esc(c.name) + "</td><td>"
+      + esc(e.note) + "</td><td style='text-align:right'>" + money(e.amount) + "</td><td>" + rec + "</td></tr>";
+  }).join("");
+  w.document.write(
+    "<!doctype html><html><head><meta charset='utf-8'><title>Expense Report</title><style>"
+    + "body{font-family:system-ui,Arial,sans-serif;color:#111827;margin:24px;max-width:800px}"
+    + "h1{font-size:20px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}"
+    + "th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;vertical-align:top}"
+    + "th{background:#f3f4f6}footer{margin-top:16px;font-size:11px;color:#9ca3af}"
+    + ".btn{display:block;margin:0 auto 8px;padding:10px 24px;background:#059669;color:#fff;border:none;border-radius:10px;font-weight:600}"
+    + "@media print{.btn{display:none}}"
+    + "</style></head><body>"
+    + "<button class='btn' onclick='print()'>Print / Save as PDF</button>"
+    + "<h1>Expense Report</h1><p style='font-size:12px;color:#6b7280'>Generated " + new Date().toLocaleString() + " · " + state.expenses.length + " entries · Total: <b>" + money(total) + "</b></p>"
+    + "<p style='font-size:12px'>" + byCat.map(x => esc(x.c.name) + ": <b>" + money(x.sum) + "</b>").join(" · ") + "</p>"
+    + "<table><tr><th>Date</th><th>Category</th><th>Note</th><th>Amount</th><th>Receipt</th></tr>" + rows + "</table>"
+    + "<footer>Expense Tracker — data from this device.</footer></body></html>");
+  w.document.close();
+}
+
+function exportCSV() {
+  const rows = [["date", "amount", "category", "note", "receipt"]];
+  state.expenses.forEach(e => rows.push([
+    new Date(e.date).toISOString(),
+    (e.amount / 100).toFixed(2),
+    cat(e.categoryId).name,
+    e.note,
+    e.receipt ? e.receipt.name : ""
+  ]));
+  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "expenses-" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.click();
+}
+
+/* ---------- PWA: offline service worker ---------- */
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(function () {});
+}
+
+render();
+</script>
+</body>
+</html>
