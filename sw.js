@@ -1,5 +1,5 @@
 /* Expense Tracker — service worker: offline support */
-const CACHE = "expense-tracker-v3";
+const CACHE = "expense-tracker-v4";
 const ASSETS = ["./", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
