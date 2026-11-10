@@ -425,7 +425,13 @@ function catDialog(c) {
 
 /* ---------- add / edit expense sheet ---------- */
 const sheet = document.getElementById("sheet"), overlay = document.getElementById("overlay");
-let amt = "", pickCat = null, receipt = null, editId = null;
+let amt = "", pickCat = null, receipt = null, editId = null, sheetDate = new Date();
+
+/* yyyy-MM-ddTHH:mm in local time for the datetime-local input */
+function toLocalInput(d) {
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+}
 
 document.getElementById("fab").addEventListener("click", () => openSheet(null));
 overlay.addEventListener("click", e => { if (e.target === overlay) closeSheet(); });
@@ -435,10 +441,15 @@ function openSheet(existing) {
   amt = existing ? (existing.amount / 100).toFixed(2).replace(/\.?0+$/, "") : "";
   pickCat = existing ? existing.categoryId : (state.categories[0] ? state.categories[0].id : null);
   receipt = existing ? existing.receipt : null;
+  sheetDate = existing ? new Date(existing.date) : new Date();
   sheet.innerHTML =
     '<p class="sheet-eyebrow">' + (editId ? "Edit expense" : "New expense") + '</p><p id="amt-display"></p>'
     + '<div class="wrap-chips" id="sheet-chips"></div>'
     + '<input class="field" id="note" placeholder="Note (optional)" value="' + (existing ? esc(existing.note) : "") + '">'
+    + '<label class="field" style="display:flex;align-items:center;gap:10px;padding:0">'
+    + '<span style="padding:0 14px;color:var(--muted);font-size:13px">📅</span>'
+    + '<input type="datetime-local" id="date" style="flex:1;background:none;border:none;outline:none;color:var(--text);font:inherit;padding:12px 14px 12px 0" step="60">'
+    + '</label>'
     + '<div class="attach"><button id="take-photo">📷 Take / choose photo</button><button id="attach-file">📎 Attach file</button></div>'
     + '<div id="receipt-slot"></div>'
     + '<input type="file" id="photo-input" accept="image/*" hidden>'
@@ -453,6 +464,7 @@ function openSheet(existing) {
   document.getElementById("attach-file").addEventListener("click", () => document.getElementById("file-input").click());
   document.getElementById("photo-input").addEventListener("change", pickReceipt);
   document.getElementById("file-input").addEventListener("change", pickReceipt);
+  document.getElementById("date").value = toLocalInput(sheetDate);
   document.getElementById("save-exp").addEventListener("click", saveExpense);
   document.getElementById("cancel").addEventListener("click", closeSheet);
   drawSheet();
@@ -495,9 +507,11 @@ function saveExpense() {
   const cents = Math.round(parseFloat(amt || "0") * 100);
   if (!(cents > 0)) return;
   const note = document.getElementById("note").value.trim();
+  const picked = new Date(document.getElementById("date").value || toLocalInput(sheetDate));
+  const when = isNaN(picked.getTime()) ? Date.now() : picked.getTime();
   if (editId) {
     const e = state.expenses.find(x => x.id === editId);
-    if (e) Object.assign(e, { amount: cents, categoryId: pickCat, note: note, receipt: receipt });
+    if (e) Object.assign(e, { amount: cents, categoryId: pickCat, note: note, receipt: receipt, date: when });
     save(); closeSheet(); render();
     return;
   }
@@ -506,7 +520,7 @@ function saveExpense() {
     amount: cents,
     categoryId: pickCat,
     note: note,
-    date: Date.now(),
+    date: when,
     receipt: receipt,
   });
   state.expenses.sort((a, b) => b.date - a.date);
