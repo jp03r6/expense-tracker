@@ -16,24 +16,40 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   :root {
     --bg: #120e22;
+    --bg-glow: #2a1a5e;
     --card: #1d1735;
     --card-2: #241c42;
     --line: #322a56;
     --text: #f4f2ff;
     --muted: #9d95c4;
+    --nav-bg: rgba(29, 23, 53, .88);
+    --veil: rgba(10, 6, 25, .68);
+    --dashed: #4b4180;
     --grad: linear-gradient(135deg, #8b5cf6, #d946ef);
     --purple: #8b5cf6;
     font-family: Inter, system-ui, -apple-system, sans-serif;
   }
+  :root[data-theme="light"] {
+    --bg: #f4f2fd;
+    --bg-glow: #ddd1fa;
+    --card: #ffffff;
+    --card-2: #f5f2fe;
+    --line: #e5e0f6;
+    --text: #241b42;
+    --muted: #716b93;
+    --nav-bg: rgba(255, 255, 255, .85);
+    --veil: rgba(58, 44, 100, .35);
+    --dashed: #cfc7ee;
+  }
   body { max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 18px 16px 108px;
-    background: radial-gradient(120% 80% at 50% -10%, #2a1a5e 0%, var(--bg) 55%);
+    background: radial-gradient(120% 80% at 50% -10%, var(--bg-glow) 0%, var(--bg) 55%);
     color: var(--text); position: relative; }
   button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
   /* Nav — floating pill */
   nav { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
     width: calc(100% - 32px); max-width: 448px; display: flex; padding: 7px; gap: 4px;
-    background: rgba(29, 23, 53, .88); backdrop-filter: blur(18px);
+    background: var(--nav-bg); backdrop-filter: blur(18px);
     border: 1px solid var(--line); border-radius: 24px; z-index: 10;
     box-shadow: 0 14px 38px rgba(8, 4, 22, .55); }
   nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -78,7 +94,7 @@
   .row .meta b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .meta small { font-size: 11px; color: var(--muted); }
   .row .amt { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .del { color: #5c5382; padding: 4px; font-size: 14px; }
+  .del { color: var(--muted); padding: 4px; font-size: 14px; }
   .del:active { color: #fb7185; }
   .clip { color: #a78bfa; font-size: 13px; padding: 4px; }
 
@@ -99,7 +115,7 @@
   #fab:active { transform: scale(.93); }
 
   /* Sheet */
-  #overlay { position: fixed; inset: 0; background: rgba(10, 6, 25, .65); z-index: 20; display: none; }
+  #overlay { position: fixed; inset: 0; background: var(--veil); z-index: 20; display: none; }
   #overlay.on { display: flex; align-items: flex-end; justify-content: center; }
   #sheet { width: 100%; max-width: 480px; background: var(--card); border: 1px solid var(--line); border-radius: 26px 26px 0 0;
     padding: 14px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; }
@@ -114,13 +130,13 @@
   .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
   .keypad button { background: var(--card-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 0;
     font-size: 18px; font-weight: 600; color: var(--text); }
-  .keypad button:active { background: #322a56; }
+  .keypad button:active { background: var(--line); }
   .btn-save { width: 100%; margin-top: 12px; background: var(--grad); color: #fff; font-weight: 700;
     font-size: 14px; padding: 14px; border-radius: 15px; box-shadow: 0 8px 20px rgba(139,92,246,.35); }
   .btn-save:disabled { opacity: .4; box-shadow: none; }
   .btn-cancel { width: 100%; padding: 10px; font-size: 12px; color: var(--muted); }
   .attach { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
-  .attach button { border: 1.5px dashed #4b4180; border-radius: 14px; padding: 10px 0; font-size: 12px; font-weight: 500; color: var(--muted); background: none; }
+  .attach button { border: 1.5px dashed var(--dashed); border-radius: 14px; padding: 10px 0; font-size: 12px; font-weight: 500; color: var(--muted); background: none; }
   .receipt-pill { display: flex; align-items: center; gap: 8px; background: rgba(139,92,246,.12); color: #c4b5fd;
     border: 1px solid rgba(139,92,246,.3); border-radius: 13px; padding: 9px 12px; font-size: 12px; margin-bottom: 6px; }
   .receipt-pill span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -141,7 +157,7 @@
   .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 28px 0; }
 
   /* Dialog */
-  .dialog-bg { position: fixed; inset: 0; background: rgba(10, 6, 25, .7); z-index: 30; display: none;
+  .dialog-bg { position: fixed; inset: 0; background: var(--veil); z-index: 30; display: none;
     align-items: center; justify-content: center; padding: 24px; }
   .dialog-bg.on { display: flex; }
   .dialog { width: 100%; max-width: 300px; background: var(--card); border: 1px solid var(--line);
@@ -154,6 +170,23 @@
   .btn-danger { background: #e11d48; color: #fff; }
   .btn-grad { background: var(--grad); color: #fff; }
   #receipt-view img { width: 100%; border-radius: 12px; max-height: 50vh; object-fit: contain; background: var(--card-2); }
+
+  /* Theme switch */
+  .switch { position: relative; flex-shrink: 0; width: 48px; height: 27px; border-radius: 99px;
+    background: var(--line); transition: background .2s ease; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 8px rgba(8, 4, 22, .45); transition: transform .2s ease; }
+  .switch.on { background: var(--grad); }
+  .switch.on::after { transform: translateX(21px); }
+  .btn-delrow { flex: 1; background: rgba(225, 29, 72, .15); color: #fb7185; }
+
+  /* Light-mode polish */
+  :root[data-theme="light"] .clip { color: #7c3aed; }
+  :root[data-theme="light"] .receipt-pill { background: rgba(139, 92, 246, .08); color: #6d28d9; border-color: rgba(139, 92, 246, .25); }
+  :root[data-theme="light"] .warn { background: rgba(245, 158, 11, .1); color: #b45309; border-color: rgba(245, 158, 11, .3); }
+  :root[data-theme="light"] .btn-delrow { background: rgba(225, 29, 72, .08); color: #e11d48; }
+  :root[data-theme="light"] .link:active { color: #7c3aed; }
+  :root[data-theme="light"] nav { box-shadow: 0 14px 38px rgba(58, 44, 100, .18); }
 </style>
 </head>
 <body>
@@ -180,13 +213,9 @@ const KEY = "expense-tracker-v1";
 const DEFAULT_CATS = [
   { id: "food", name: "Food", emoji: "🍔", color: "#f97316" },
   { id: "transport", name: "Transport", emoji: "🚗", color: "#0ea5e9" },
-  { id: "housing", name: "Housing", emoji: "🏠", color: "#8b5cf6" },
-  { id: "bills", name: "Bills", emoji: "🧾", color: "#ef4444" },
-  { id: "health", name: "Health", emoji: "💊", color: "#10b981" },
-  { id: "shopping", name: "Shopping", emoji: "🛍️", color: "#ec4899" },
-  { id: "fun", name: "Fun", emoji: "🎬", color: "#eab308" },
-  { id: "other", name: "Other", emoji: "📦", color: "#64748b" },
+  { id: "housing", name: "Lodging", emoji: "🏠", color: "#8b5cf6" },
 ];
+const LEGACY_CAT_IDS = ["bills", "health", "shopping", "fun", "other"];
 const PALETTE = ["#f97316","#0ea5e9","#8b5cf6","#ef4444","#10b981","#ec4899","#eab308","#64748b"];
 
 const METHOD_DEFAULTS = [
@@ -202,15 +231,27 @@ function load() {
     if (s && Array.isArray(s.expenses) && Array.isArray(s.categories)) {
       if (!Array.isArray(s.methods)) s.methods = METHOD_DEFAULTS.map(m => Object.assign({}, m));
       s.methods.forEach(m => { if (!m.icon) m.icon = (METHOD_DEFAULTS.find(d => d.id === m.id) || {}).icon || "💳"; });
+      if (s.theme !== "light" && s.theme !== "dark") s.theme = "dark";
+      /* Trim unused old default categories; keep anything with expenses or user-made ones */
+      s.categories = s.categories.filter(c =>
+        !(LEGACY_CAT_IDS.indexOf(c.id) >= 0 && !s.expenses.some(e => e.categoryId === c.id)));
+      const h = s.categories.find(c => c.id === "housing");
+      if (h && h.name === "Housing") h.name = "Lodging";
       return s;
     }
   } catch (e) {}
   return {
     categories: DEFAULT_CATS.map(c => Object.assign({}, c)),
     methods: METHOD_DEFAULTS.map(m => Object.assign({}, m)),
-    expenses: [], nextId: 1
+    expenses: [], nextId: 1, theme: "dark"
   };
 }
+function applyTheme() {
+  const light = state.theme === "light";
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", light ? "#f4f2fd" : "#120e22");
+}
+applyTheme();
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); }
   catch (e) { alert("Storage full — receipt files may be too large."); }
@@ -338,7 +379,13 @@ function renderHistory() {
 
 function renderSettings() {
   document.getElementById("tab-settings").innerHTML =
-    '<div class="head-row"><h2>Categories</h2><button class="btn-add" id="add-cat">+ Add</button></div>'
+    '<div class="head-row"><h2>Appearance</h2></div>'
+    + '<div class="card" style="padding:4px 16px">'
+    + '<div class="cat-row"><span class="ic" style="font-size:20px">' + (state.theme === "light" ? "☀️" : "🌙") + '</span>'
+    + '<span class="grow">' + (state.theme === "light" ? "Light mode" : "Dark mode") + '</span>'
+    + '<button class="switch ' + (state.theme === "dark" ? "on" : "") + '" id="theme-switch" aria-label="Toggle dark mode"></button></div>'
+    + "</div>"
+    + '<div class="head-row" style="margin-top:20px"><h2>Categories</h2><button class="btn-add" id="add-cat">+ Add</button></div>'
     + '<div id="cat-warn"></div><div class="card" style="padding:4px 16px">'
     + state.categories.map(c => {
         const inUse = state.expenses.some(e => e.categoryId === c.id);
@@ -359,6 +406,10 @@ function renderSettings() {
       }).join("")
     + "</div>"
     + '<p class="muted">All data lives on this device only.</p>';
+  document.getElementById("theme-switch").addEventListener("click", () => {
+    state.theme = state.theme === "light" ? "dark" : "light";
+    applyTheme(); save(); render();
+  });
   document.getElementById("add-cat").addEventListener("click", () => catDialog(null));
   document.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => catDialog(cat(b.dataset.edit))));
   document.querySelectorAll("[data-dcat]").forEach(b => b.addEventListener("click", () => {
@@ -394,7 +445,7 @@ function methodDialog(m) {
     + '<input class="field" id="m-name" placeholder="e.g. Debit card" value="' + (m ? esc(m.name) : "") + '"></div>'
     + '<div class="two"><button class="btn-ghost" id="m-cancel">Cancel</button>'
     + '<button class="btn-grad" id="m-save">Save</button></div>'
-    + (m ? '<div class="two"><button style="flex:1;background:rgba(225,29,72,.15);color:#fb7185" id="m-delete">Delete</button></div>' : "")
+    + (m ? '<div class="two"><button class="btn-delrow" id="m-delete">Delete</button></div>' : "")
     + "</div>";
   document.getElementById("dialog-bg").classList.add("on");
   document.getElementById("m-cancel").addEventListener("click", closeDialog);
@@ -475,7 +526,7 @@ function catDialog(c) {
     + '<input class="field" id="c-name" placeholder="Category name" value="' + (c ? esc(c.name) : "") + '"></div>'
     + '<div class="two"><button class="btn-ghost" id="c-cancel">Cancel</button>'
     + '<button class="btn-grad" id="c-save">Save</button></div>'
-    + (c ? '<div class="two"><button style="flex:1;background:rgba(225,29,72,.15);color:#fb7185" id="c-delete">Delete category</button></div>' : "")
+    + (c ? '<div class="two"><button class="btn-delrow" id="c-delete">Delete category</button></div>' : "")
     + "</div>";
   document.getElementById("dialog-bg").classList.add("on");
   document.getElementById("c-cancel").addEventListener("click", closeDialog);
