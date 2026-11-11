@@ -133,9 +133,6 @@
   .btn-add { background: var(--grad); color: #fff; border-radius: 99px; padding: 8px 15px; font-size: 12px; font-weight: 700; }
   .warn { background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .35); color: #fbbf24;
     font-size: 12px; padding: 9px 12px; border-radius: 12px; margin: 8px 0; }
-  .swatches { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 4px; }
-  .swatches button { width: 30px; height: 30px; border-radius: 50%; border: 3px solid transparent; }
-  .swatches button.on { border-color: #fff; }
   .muted { font-size: 11px; color: var(--muted); text-align: center; margin-top: 18px; line-height: 1.6; }
   .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 28px 0; }
 
@@ -189,9 +186,9 @@ const DEFAULT_CATS = [
 const PALETTE = ["#f97316","#0ea5e9","#8b5cf6","#ef4444","#10b981","#ec4899","#eab308","#64748b"];
 
 const METHOD_DEFAULTS = [
-  { id: "cc-personal", name: "Credit card (personal)" },
-  { id: "cc-company", name: "Credit card (company)" },
-  { id: "cash", name: "Cash" },
+  { id: "cc-personal", name: "Credit card (personal)", icon: "💳" },
+  { id: "cc-company", name: "Credit card (company)", icon: "🏢" },
+  { id: "cash", name: "Cash", icon: "💵" },
 ];
 
 let state = load();
@@ -200,6 +197,7 @@ function load() {
     const s = JSON.parse(localStorage.getItem(KEY));
     if (s && Array.isArray(s.expenses) && Array.isArray(s.categories)) {
       if (!Array.isArray(s.methods)) s.methods = METHOD_DEFAULTS.map(m => Object.assign({}, m));
+      s.methods.forEach(m => { if (!m.icon) m.icon = (METHOD_DEFAULTS.find(d => d.id === m.id) || {}).icon || "💳"; });
       return s;
     }
   } catch (e) {}
@@ -252,7 +250,7 @@ function rowHTML(e, showDelete, showTime) {
     + '<div class="meta"><b>' + (esc(e.note) || esc(c.name))
     + (e.receipt ? ' <button class="clip" data-view="' + e.id + '" title="' + esc(e.receipt.name) + '">📎</button>' : "")
     + '</b><small>' + fmtDate(e.date) + (showTime ? " · " + fmtTime(e.date) : "") + " · " + esc(c.name)
-    + (method(e.methodId) ? " · " + esc(method(e.methodId).name) : "") + '</small></div>'
+    + (method(e.methodId) ? " · " + (method(e.methodId).icon ? method(e.methodId).icon + " " : "") + esc(method(e.methodId).name) : "") + '</small></div>'
     + '<span class="amt">' + money(e.amount) + '</span>'
     + (showDelete ? '<button class="del" data-del="' + e.id + '">🗑</button>' : "")
     + '</div>';
@@ -350,7 +348,7 @@ function renderSettings() {
     + '<div id="method-warn"></div><div class="card" style="padding:4px 16px">'
     + (state.methods || []).map(m => {
         const inUse = state.expenses.some(e => e.methodId === m.id);
-        return '<div class="cat-row"><span class="ic" style="font-size:20px">💳</span>'
+        return '<div class="cat-row"><span class="ic" style="font-size:20px">' + esc(m.icon || "💳") + '</span>'
           + '<span class="grow">' + esc(m.name) + "</span>"
           + '<button class="link" data-medit="' + m.id + '">Edit</button>'
           + '<button class="del" data-mdel="' + m.id + '" title="' + (inUse ? "In use" : "Delete") + '">🗑</button></div>';
@@ -387,7 +385,9 @@ function renderSettings() {
 function methodDialog(m) {
   document.getElementById("dialog").innerHTML =
     '<div id="method-editor"><h3>' + (m ? "Edit payment method" : "New payment method") + "</h3>"
-    + '<input class="field" id="m-name" placeholder="e.g. Debit card" value="' + (m ? esc(m.name) : "") + '">'
+    + '<div style="display:flex;gap:8px;margin-bottom:10px">'
+    + '<input class="field" id="m-icon" style="width:64px;text-align:center;font-size:18px" maxlength="2" placeholder="💳" value="' + (m ? esc(m.icon || "💳") : "💳") + '">'
+    + '<input class="field" id="m-name" placeholder="e.g. Debit card" value="' + (m ? esc(m.name) : "") + '"></div>'
     + '<div class="two"><button class="btn-ghost" id="m-cancel">Cancel</button>'
     + '<button class="btn-grad" id="m-save">Save</button></div>'
     + (m ? '<div class="two"><button style="flex:1;background:rgba(225,29,72,.15);color:#fb7185" id="m-delete">Delete</button></div>' : "")
@@ -396,9 +396,10 @@ function methodDialog(m) {
   document.getElementById("m-cancel").addEventListener("click", closeDialog);
   document.getElementById("m-save").addEventListener("click", () => {
     const name = document.getElementById("m-name").value.trim();
+    const icon = document.getElementById("m-icon").value.trim() || "💳";
     if (!name) return;
-    if (m) m.name = name;
-    else state.methods.push({ id: "m" + Date.now(), name: name });
+    if (m) Object.assign(m, { name: name, icon: icon });
+    else state.methods.push({ id: "m" + Date.now(), name: name, icon: icon });
     save(); closeDialog(); render();
   });
   const delBtn = document.getElementById("m-delete");
@@ -463,31 +464,23 @@ document.getElementById("dialog-bg").addEventListener("click", e => { if (e.targ
 
 /* ---------- category dialog ---------- */
 function catDialog(c) {
-  const startHex = c ? c.color : PALETTE[0];
   document.getElementById("dialog").innerHTML =
     '<div id="cat-editor"><h3>' + (c ? "Edit category" : "New category") + "</h3>"
     + '<div style="display:flex;gap:8px;margin-bottom:10px">'
     + '<input class="field" id="c-emoji" style="width:64px;text-align:center;font-size:18px" maxlength="2" placeholder="🙂" value="' + (c ? esc(c.emoji) : "") + '">'
     + '<input class="field" id="c-name" placeholder="Category name" value="' + (c ? esc(c.name) : "") + '"></div>'
-    + '<div class="swatches">' + PALETTE.map(h =>
-        '<button data-hex="' + h + '" class="' + (startHex === h ? "on" : "") + '" style="background:' + h + '"></button>').join("") + "</div>"
     + '<div class="two"><button class="btn-ghost" id="c-cancel">Cancel</button>'
     + '<button class="btn-grad" id="c-save">Save</button></div>'
     + (c ? '<div class="two"><button style="flex:1;background:rgba(225,29,72,.15);color:#fb7185" id="c-delete">Delete category</button></div>' : "")
     + "</div>";
   document.getElementById("dialog-bg").classList.add("on");
-  let hex = startHex;
-  document.querySelectorAll("[data-hex]").forEach(b => b.addEventListener("click", () => {
-    hex = b.dataset.hex;
-    document.querySelectorAll("[data-hex]").forEach(x => x.classList.toggle("on", x === b));
-  }));
   document.getElementById("c-cancel").addEventListener("click", closeDialog);
   document.getElementById("c-save").addEventListener("click", () => {
     const name = document.getElementById("c-name").value.trim();
     const emoji = document.getElementById("c-emoji").value.trim() || "🏷️";
     if (!name) return;
-    if (c) Object.assign(c, { name: name, emoji: emoji, color: hex });
-    else state.categories.push({ id: "c" + Date.now(), name: name, emoji: emoji, color: hex });
+    if (c) Object.assign(c, { name: name, emoji: emoji });
+    else state.categories.push({ id: "c" + Date.now(), name: name, emoji: emoji, color: PALETTE[state.categories.length % PALETTE.length] });
     save(); closeDialog(); render();
   });
   const delBtn = document.getElementById("c-delete");
@@ -565,7 +558,7 @@ function drawSheet() {
   document.querySelectorAll("[data-pc]").forEach(b => b.addEventListener("click", () => { pickCat = b.dataset.pc; drawSheet(); }));
   document.getElementById("method-chips").innerHTML = (state.methods || []).map(m =>
     '<button class="chip ' + (pickMethod === m.id ? "on" : "") + '" style="' + (pickMethod === m.id ? "background:var(--grad);border-color:transparent" : "") + '" data-pm="' + m.id + '">'
-    + esc(m.name) + "</button>").join("");
+    + (m.icon ? esc(m.icon) + " " : "") + esc(m.name) + "</button>").join("");
   document.querySelectorAll("[data-pm]").forEach(b => b.addEventListener("click", () => { pickMethod = b.dataset.pm; drawSheet(); }));
   const slot = document.getElementById("receipt-slot");
   slot.innerHTML = receipt
