@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -20,18 +21,22 @@
     --purple: #8b5cf6;
     font-family: Inter, system-ui, -apple-system, sans-serif;
   }
-  body { max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 18px 16px 76px;
+  body { max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 18px 16px 108px;
     background: radial-gradient(120% 80% at 50% -10%, #2a1a5e 0%, var(--bg) 55%);
     color: var(--text); position: relative; }
   button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
-  /* Nav */
-  nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px;
-    display: flex; background: rgba(29, 23, 53, .92); backdrop-filter: blur(14px);
-    border-top: 1px solid var(--line); z-index: 10; padding-bottom: env(safe-area-inset-bottom);
-    border-radius: 22px 22px 0 0; }
-  nav button { flex: 1; padding: 9px 0 7px; font-size: 11px; font-weight: 500; color: var(--muted); line-height: 1.35; }
-  nav button.on { color: #c4b5fd; }
+  /* Nav — floating pill */
+  nav { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 448px; display: flex; padding: 7px; gap: 4px;
+    background: rgba(29, 23, 53, .88); backdrop-filter: blur(18px);
+    border: 1px solid var(--line); border-radius: 24px; z-index: 10;
+    box-shadow: 0 14px 38px rgba(8, 4, 22, .55); }
+  nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 9px 0 7px; font-size: 10.5px; font-weight: 600; color: var(--muted);
+    line-height: 1.15; border-radius: 17px; transition: all .15s ease; }
+  nav button .ico { font-size: 18px; }
+  nav button.on { color: #fff; background: var(--grad); box-shadow: 0 8px 18px rgba(217, 70, 239, .38); }
 
   section { display: none; }
   section.on { display: block; }
@@ -84,7 +89,7 @@
   .chip.on { color: #fff; border-color: transparent; }
 
   /* FAB */
-  #fab { position: fixed; right: max(18px, calc(50vw - 222px)); bottom: 84px; width: 58px; height: 58px;
+  #fab { position: fixed; right: max(18px, calc(50vw - 222px)); bottom: 108px; width: 58px; height: 58px;
     border-radius: 18px; background: var(--grad); color: #fff; font-size: 30px; line-height: 1;
     box-shadow: 0 10px 24px rgba(217, 70, 239, .4); z-index: 11; border-radius: 50%; }
   #fab:active { transform: scale(.93); }
@@ -153,9 +158,9 @@
 <body>
 
 <nav>
-  <button data-tab="summary" class="on">📊<br>Summary</button>
-  <button data-tab="history">🧾<br>History</button>
-  <button data-tab="settings">⚙️<br>Settings</button>
+  <button data-tab="summary" class="on"><span class="ico">📊</span>Summary</button>
+  <button data-tab="history"><span class="ico">🧾</span>History</button>
+  <button data-tab="settings"><span class="ico">⚙️</span>Settings</button>
 </nav>
 
 <section id="tab-summary" class="on"></section>
@@ -183,13 +188,26 @@ const DEFAULT_CATS = [
 ];
 const PALETTE = ["#f97316","#0ea5e9","#8b5cf6","#ef4444","#10b981","#ec4899","#eab308","#64748b"];
 
+const METHOD_DEFAULTS = [
+  { id: "cc-personal", name: "Credit card (personal)" },
+  { id: "cc-company", name: "Credit card (company)" },
+  { id: "cash", name: "Cash" },
+];
+
 let state = load();
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.expenses) && Array.isArray(s.categories)) return s;
+    if (s && Array.isArray(s.expenses) && Array.isArray(s.categories)) {
+      if (!Array.isArray(s.methods)) s.methods = METHOD_DEFAULTS.map(m => Object.assign({}, m));
+      return s;
+    }
   } catch (e) {}
-  return { categories: DEFAULT_CATS.map(c => Object.assign({}, c)), expenses: [], nextId: 1 };
+  return {
+    categories: DEFAULT_CATS.map(c => Object.assign({}, c)),
+    methods: METHOD_DEFAULTS.map(m => Object.assign({}, m)),
+    expenses: [], nextId: 1
+  };
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); }
@@ -198,6 +216,7 @@ function save() {
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const money = c => "$" + (c / 100).toFixed(2);
 const cat = id => state.categories.find(c => c.id === id) || { name: "?", emoji: "❓", color: "#9ca3af" };
+const method = id => (state.methods || []).find(m => m.id === id);
 const fmtDate = ts => { const d = new Date(ts), now = new Date();
   if (d.toDateString() === now.toDateString()) return "Today";
   const y = new Date(now); y.setDate(y.getDate() - 1);
@@ -232,7 +251,8 @@ function rowHTML(e, showDelete, showTime) {
     + '<div class="badge">' + c.emoji + '</div>'
     + '<div class="meta"><b>' + (esc(e.note) || esc(c.name))
     + (e.receipt ? ' <button class="clip" data-view="' + e.id + '" title="' + esc(e.receipt.name) + '">📎</button>' : "")
-    + '</b><small>' + fmtDate(e.date) + (showTime ? " · " + fmtTime(e.date) : "") + " · " + esc(c.name) + '</small></div>'
+    + '</b><small>' + fmtDate(e.date) + (showTime ? " · " + fmtTime(e.date) : "") + " · " + esc(c.name)
+    + (method(e.methodId) ? " · " + esc(method(e.methodId).name) : "") + '</small></div>'
     + '<span class="amt">' + money(e.amount) + '</span>'
     + (showDelete ? '<button class="del" data-del="' + e.id + '">🗑</button>' : "")
     + '</div>';
@@ -326,7 +346,17 @@ function renderSettings() {
           + '<button class="del" data-dcat="' + c.id + '" title="' + (inUse ? "In use" : "Delete") + '">🗑</button></div>';
       }).join("")
     + "</div>"
-    + '<p class="muted">All data lives on this device only.<br>Later versions: budgets, recurring expenses.</p>';
+    + '<div class="head-row" style="margin-top:20px"><h2>Payment methods</h2><button class="btn-add" id="add-method">+ Add</button></div>'
+    + '<div id="method-warn"></div><div class="card" style="padding:4px 16px">'
+    + (state.methods || []).map(m => {
+        const inUse = state.expenses.some(e => e.methodId === m.id);
+        return '<div class="cat-row"><span class="ic" style="font-size:20px">💳</span>'
+          + '<span class="grow">' + esc(m.name) + "</span>"
+          + '<button class="link" data-medit="' + m.id + '">Edit</button>'
+          + '<button class="del" data-mdel="' + m.id + '" title="' + (inUse ? "In use" : "Delete") + '">🗑</button></div>';
+      }).join("")
+    + "</div>"
+    + '<p class="muted">All data lives on this device only.</p>';
   document.getElementById("add-cat").addEventListener("click", () => catDialog(null));
   document.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => catDialog(cat(b.dataset.edit))));
   document.querySelectorAll("[data-dcat]").forEach(b => b.addEventListener("click", () => {
@@ -339,6 +369,49 @@ function renderSettings() {
       state.categories = state.categories.filter(x => x.id !== c.id); save(); render();
     });
   }));
+  document.getElementById("add-method").addEventListener("click", () => methodDialog(null));
+  document.querySelectorAll("[data-medit]").forEach(b => b.addEventListener("click", () => methodDialog(method(b.dataset.medit))));
+  document.querySelectorAll("[data-mdel]").forEach(b => b.addEventListener("click", () => {
+    const m = method(b.dataset.mdel);
+    if (state.expenses.some(e => e.methodId === m.id)) {
+      document.getElementById("method-warn").innerHTML = '<div class="warn">"' + esc(m.name) + '" is used by expenses and can\'t be deleted.</div>';
+      return;
+    }
+    confirmDialog('Delete payment method "' + esc(m.name) + '"?', () => {
+      state.methods = state.methods.filter(x => x.id !== m.id); save(); render();
+    });
+  }));
+}
+
+/* ---------- payment method dialog ---------- */
+function methodDialog(m) {
+  document.getElementById("dialog").innerHTML =
+    '<div id="method-editor"><h3>' + (m ? "Edit payment method" : "New payment method") + "</h3>"
+    + '<input class="field" id="m-name" placeholder="e.g. Debit card" value="' + (m ? esc(m.name) : "") + '">'
+    + '<div class="two"><button class="btn-ghost" id="m-cancel">Cancel</button>'
+    + '<button class="btn-grad" id="m-save">Save</button></div>'
+    + (m ? '<div class="two"><button style="flex:1;background:rgba(225,29,72,.15);color:#fb7185" id="m-delete">Delete</button></div>' : "")
+    + "</div>";
+  document.getElementById("dialog-bg").classList.add("on");
+  document.getElementById("m-cancel").addEventListener("click", closeDialog);
+  document.getElementById("m-save").addEventListener("click", () => {
+    const name = document.getElementById("m-name").value.trim();
+    if (!name) return;
+    if (m) m.name = name;
+    else state.methods.push({ id: "m" + Date.now(), name: name });
+    save(); closeDialog(); render();
+  });
+  const delBtn = document.getElementById("m-delete");
+  if (delBtn) delBtn.addEventListener("click", () => {
+    if (state.expenses.some(e => e.methodId === m.id)) {
+      alert('"' + m.name + '" is used by expenses and can\'t be deleted.');
+      return;
+    }
+    confirmDialog('Delete payment method "' + esc(m.name) + '"?', () => {
+      state.methods = state.methods.filter(x => x.id !== m.id);
+      save(); closeDialog(); render();
+    });
+  });
 }
 
 function bindRows() {
@@ -432,7 +505,7 @@ function catDialog(c) {
 
 /* ---------- add / edit expense sheet ---------- */
 const sheet = document.getElementById("sheet"), overlay = document.getElementById("overlay");
-let amt = "", pickCat = null, receipt = null, editId = null, sheetDate = new Date();
+let amt = "", pickCat = null, pickMethod = null, receipt = null, editId = null, sheetDate = new Date();
 
 /* yyyy-MM-ddTHH:mm in local time for the datetime-local input */
 function toLocalInput(d) {
@@ -448,10 +521,15 @@ function openSheet(existing) {
   amt = existing ? (existing.amount / 100).toFixed(2).replace(/\.?0+$/, "") : "";
   pickCat = existing ? existing.categoryId : (state.categories[0] ? state.categories[0].id : null);
   receipt = existing ? existing.receipt : null;
+  pickMethod = existing && method(existing.methodId)
+    ? existing.methodId
+    : (state.methods[0] ? state.methods[0].id : null);
   sheetDate = existing ? new Date(existing.date) : new Date();
   sheet.innerHTML =
     '<p class="sheet-eyebrow">' + (editId ? "Edit expense" : "New expense") + '</p><p id="amt-display"></p>'
     + '<div class="wrap-chips" id="sheet-chips"></div>'
+    + '<p class="sheet-eyebrow" style="letter-spacing:.1em;margin-bottom:8px">Payment method</p>'
+    + '<div class="wrap-chips" id="method-chips"></div>'
     + '<input class="field" id="note" placeholder="Note (optional)" value="' + (existing ? esc(existing.note) : "") + '">'
     + '<label class="field" style="display:flex;align-items:center;gap:10px;padding:0">'
     + '<span style="padding:0 14px;color:var(--muted);font-size:13px">📅</span>'
@@ -485,6 +563,10 @@ function drawSheet() {
     '<button class="chip ' + (pickCat === c.id ? "on" : "") + '" style="' + (pickCat === c.id ? "background:" + c.color + ";border-color:transparent" : "") + '" data-pc="' + c.id + '">'
     + c.emoji + " " + esc(c.name) + "</button>").join("");
   document.querySelectorAll("[data-pc]").forEach(b => b.addEventListener("click", () => { pickCat = b.dataset.pc; drawSheet(); }));
+  document.getElementById("method-chips").innerHTML = (state.methods || []).map(m =>
+    '<button class="chip ' + (pickMethod === m.id ? "on" : "") + '" style="' + (pickMethod === m.id ? "background:var(--grad);border-color:transparent" : "") + '" data-pm="' + m.id + '">'
+    + esc(m.name) + "</button>").join("");
+  document.querySelectorAll("[data-pm]").forEach(b => b.addEventListener("click", () => { pickMethod = b.dataset.pm; drawSheet(); }));
   const slot = document.getElementById("receipt-slot");
   slot.innerHTML = receipt
     ? '<div class="receipt-pill"><span>📎 ' + esc(receipt.name) + '</span><button style="font-weight:700" id="rm-r">Remove</button></div>' : "";
@@ -534,7 +616,7 @@ function saveExpense() {
   const when = isNaN(picked.getTime()) ? Date.now() : picked.getTime();
   if (editId) {
     const e = state.expenses.find(x => x.id === editId);
-    if (e) Object.assign(e, { amount: cents, categoryId: pickCat, note: note, receipt: receipt, date: when });
+    if (e) Object.assign(e, { amount: cents, categoryId: pickCat, methodId: pickMethod, note: note, receipt: receipt, date: when });
     save(); closeSheet(); render();
     return;
   }
@@ -542,6 +624,7 @@ function saveExpense() {
     id: state.nextId++,
     amount: cents,
     categoryId: pickCat,
+    methodId: pickMethod,
     note: note,
     date: when,
     receipt: receipt,
@@ -609,6 +692,7 @@ function exportReport(list, from, to) {
         : "<em>" + esc(e.receipt.name) + " (image, not stored)</em>";
     }
     return "<tr><td>" + fmtLocalStamp(e.date) + "</td><td>" + esc(c.name) + "</td><td>"
+      + (method(e.methodId) ? esc(method(e.methodId).name) : "") + "</td><td>"
       + esc(e.note) + "</td><td style='text-align:right'>" + money(e.amount) + "</td><td>" + rec + "</td></tr>";
   }).join("");
   w.document.write(
@@ -626,17 +710,18 @@ function exportReport(list, from, to) {
     + list.length + " entries · Total: <b>" + money(total) + "</b><br>"
     + "Generated " + fmtLocalStamp(Date.now()) + "</p>"
     + "<p style='font-size:12px'>" + byCat.map(x => esc(x.c.name) + ": <b>" + money(x.sum) + "</b>").join(" · ") + "</p>"
-    + "<table><tr><th>Date &amp; time</th><th>Category</th><th>Note</th><th>Amount</th><th>Receipt</th></tr>" + rows + "</table>"
+    + "<table><tr><th>Date &amp; time</th><th>Category</th><th>Payment</th><th>Note</th><th>Amount</th><th>Receipt</th></tr>" + rows + "</table>"
     + "<footer>Expense Tracker — data from this device. Times shown in your local timezone.</footer></body></html>");
   w.document.close();
 }
 
 function exportCSV(list) {
-  const rows = [["date", "amount", "category", "note", "receipt"]];
+  const rows = [["date", "amount", "category", "method", "note", "receipt"]];
   list.forEach(e => rows.push([
     fmtLocalStamp(e.date),
     (e.amount / 100).toFixed(2),
     cat(e.categoryId).name,
+    method(e.methodId) ? method(e.methodId).name : "",
     e.note,
     e.receipt ? "yes" : ""
   ]));
