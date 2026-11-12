@@ -583,9 +583,9 @@ function openSheet(existing) {
     + '<span style="padding:0 14px;color:var(--muted);font-size:13px">📅</span>'
     + '<input type="datetime-local" id="date" style="flex:1;background:none;border:none;outline:none;color:var(--text);font:inherit;padding:12px 14px 12px 0" step="60">'
     + '</label>'
-    + '<div class="attach"><button id="take-photo">📷 Take / choose photo</button><button id="attach-file">📎 Attach file</button></div>'
+    + '<div class="attach"><button id="take-photo">📷 Take photo</button><button id="attach-file">📎 Attach file</button></div>'
     + '<div id="receipt-slot"></div>'
-    + '<input type="file" id="photo-input" accept="image/*" hidden>'
+    + '<input type="file" id="photo-input" accept="image/*" capture="environment" hidden>'
     + '<input type="file" id="file-input" accept="image/*,application/pdf" hidden>'
     + '<div class="keypad" id="keypad">'
     + ["1","2","3","4","5","6","7","8","9",".","0","⌫"].map(k => '<button data-k="' + k + '">' + k + "</button>").join("")
